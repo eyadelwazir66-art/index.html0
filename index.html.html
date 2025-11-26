@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premium Dashboard Pro</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, sans-serif;}
+body { background:#f0f2f5; color:#333; }
+header { background:#ff7d00; color:white; padding:20px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+nav { display:flex; justify-content:center; gap:20px; margin:10px 0; }
+nav a { color:white; text-decoration:none; font-weight:bold; }
+nav a:hover { text-decoration:underline; }
+.container { max-width:1000px; margin:40px auto; background:white; padding:30px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.1);}
+h2 { margin-bottom:20px; color:#ff7d00; }
+input, button { padding:12px; margin:8px 0; width:100%; border-radius:8px; border:1px solid #ccc; font-size:15px; }
+button { background:#ff7d00; color:white; border:none; cursor:pointer; font-weight:bold; transition:0.3s; }
+button:hover { background:#e66a00; }
+.product-form { display:none; margin-top:20px; padding:20px; border:1px solid #ddd; border-radius:10px; background:#fff8f0; }
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th, td { padding:12px; text-align:left; vertical-align: middle; border-bottom:1px solid #eee; }
+th { background:#fff4e6; color:#ff7d00; }
+img.product-img { width:60px; height:60px; object-fit:cover; border-radius:8px; }
+#dashboard { display:none; }
+#product-preview { display:block; width:60px; height:60px; object-fit:cover; margin-top:10px; border-radius:8px; }
+#search { margin-bottom:10px; padding:8px; }
+@media(max-width:700px){ .container { margin:20px; padding:20px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Premium Dashboard Pro</h1>
+</header>
+
+<section id="login" class="container">
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+  <p>Or <a href="#" onclick="registerUser()">Register</a></p>
+</section>
+
+<section id="dashboard" class="container">
+  <h2>Dashboard</h2>
+  <p>Welcome, <span id="user-name">User</span>!</p>
+  <input type="text" id="search" placeholder="Search products..." onkeyup="searchProducts()">
+  <button onclick="showProductForm()">Add Product</button>
+
+  <div class="product-form" id="product-form">
+    <h3>Add / Edit Product</h3>
+    <input type="text" id="product-name" placeholder="Product Name">
+    <input type="number" id="product-price" placeholder="Price">
+    <input type="text" id="product-desc" placeholder="Description">
+    <input type="file" id="product-image" accept="image/*">
+    <img id="product-preview" src="https://via.placeholder.com/60">
+    <button onclick="submitProduct()">Submit</button>
+    <button onclick="cancelForm()">Cancel</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Image</th><th>Name</th><th>Price</th><th>Description</th><th>Action</th></tr>
+    </thead>
+    <tbody id="product-list"></tbody>
+  </table>
+</section>
+
+<script>
+/* ===== Local Login System ===== */
+let users = JSON.parse(localStorage.getItem('users')||'{}');
+let currentUser = null;
+
+function registerUser(){
+  const email = prompt("Enter Email:");
+  const password = prompt("Enter Password (min 6 chars):");
+  if(!email || !password){ alert("Enter valid data"); return; }
+  if(users[email]){ alert("Email already exists"); return; }
+  users[email] = {password}; 
+  localStorage.setItem('users', JSON.stringify(users));
+  alert("Registered! Now login.");
+}
+
+function loginUser(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  if(users[email] && users[email].password===password){
+    currentUser = email;
+    document.getElementById('user-name').innerText = email.split('@')[0];
+    document.getElementById('login').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    loadProducts();
+  } else { alert('Invalid email or password'); }
+}
+
+/* ===== Product System (LocalStorage) ===== */
+let products = JSON.parse(localStorage.getItem('products')||'[]');
+let editIndex = -1;
+
+function showProductForm(){ document.getElementById('product-form').style.display='block'; }
+function cancelForm(){
+  document.getElementById('product-form').style.display='none';
+  document.getElementById('product-name').value='';
+  document.getElementById('product-price').value='';
+  document.getElementById('product-desc').value='';
+  document.getElementById('product-preview').src='https://via.placeholder.com/60';
+  editIndex = -1;
+}
+
+const imgInput = document.getElementById('product-image');
+imgInput.onchange = function(){
+  if(imgInput.files && imgInput.files[0]){
+    const reader = new FileReader();
+    reader.onload = e => document.getElementById('product-preview').src = e.target.result;
+    reader.readAsDataURL(imgInput.files[0]);
+  }
+}
+
+function submitProduct(){
+  const name = document.getElementById('product-name').value;
+  const price = document.getElementById('product-price').value;
+  const desc = document.getElementById('product-desc').value;
+  const img = document.getElementById('product-preview').src;
+  if(!name||!price){ alert('Enter name and price'); return; }
+
+  if(editIndex>=0){
+    products[editIndex]={name, price, desc, img};
+  } else {
+    products.push({name, price, desc, img});
+  }
+  localStorage.setItem('products', JSON.stringify(products));
+  cancelForm();
+  loadProducts();
+}
+
+function loadProducts(){
+  const list = document.getElementById('product-list');
+  list.innerHTML='';
+  products.forEach((p,i)=>{
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><img src="${p.img}" class="product-img"></td>
+      <td>${p.name}</td>
+      <td>${p.price}</td>
+      <td>${p.desc}</td>
+      <td>
+        <button onclick='editProduct(${i})'>Edit</button>
+        <button onclick='deleteProduct(${i})'>Delete</button>
+      </td>`;
+    list.appendChild(row);
+  });
+}
+
+function deleteProduct(i){
+  if(confirm('Delete this product?')){
+    products.splice(i,1);
+    localStorage.setItem('products', JSON.stringify(products));
+    loadProducts();
+  }
+}
+
+function editProduct(i){
+  const p = products[i];
+  document.getElementById('product-name').value = p.name;
+  document.getElementById('product-price').value = p.price;
+  document.getElementById('product-desc').value = p.desc;
+  document.getElementById('product-preview').src = p.img;
+  showProductForm();
+  editIndex = i;
+}
+
+function searchProducts(){
+  const val = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#product-list tr').forEach((row)=>{
+    const name = row.children[1].innerText.toLowerCase();
+    row.style.display = name.includes(val)?'':'none';
+  });
+}
+</script>
+
+</body>
+</html>
